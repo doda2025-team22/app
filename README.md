@@ -1,14 +1,16 @@
-# SMS Checker
+# SMS Checker / Frontend
 
-This repository contains a simple SMS checker for detecting Spam in SMS messages. The application resembles a distributed application with a web-based frontend, which is connected to a backend in a trivial microservice architecture.
+The frontend allows users to interact with the model in the backend through a web-based UI.
 
-The app is used as a runnning example in the [DevOps for Distributed Apps (CS4295)][studyguide] course offered at the [Delft University of Technology (Netherlands, EU)][serg-teaching] by [Dr. Sebastian Proksch](https://proks.ch).
+The frontend is implemented with Spring Boot and only consists of a website and one REST endpoint.
+It **requires Java 25+** to run (tested with 25.0.1).
+Any classification requests will be delegated to the `backend` service that serves the model.
+You must specify the environment variable `MODEL_HOST` to define where the backend is running.
 
-[studyguide]: https://studyguide.tudelft.nl/courses/study-guide/educations/14776
-[serg-teaching]: https://se.ewi.tudelft.nl/teaching/
+The frontend service can be started through running the `Main` class (e.g., in your IDE) or through Maven (recommended):
 
+    MODEL_HOST="http://localhost:8081" mvn spring-boot:run
 
-
-
+The server runs on port 8080. Once its startup has finished, you can access [localhost:8080/sms](http://localhost:8080/sms) in your browser to interact with the application.
 
 
