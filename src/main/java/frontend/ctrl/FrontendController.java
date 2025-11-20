@@ -59,8 +59,10 @@ public class FrontendController {
     }
 
     @GetMapping("/library-version")
-    public String getLibraryVersion() {
-        return VersionUtil.getVersion();
+    public String getLibraryVersion(Model m) {
+        System.out.println("Library version is " + VersionUtil.getVersion());
+        m.addAttribute("version",VersionUtil.getVersion());
+        return "sms/library-version";
     }
 
     @PostMapping({ "", "/" })
