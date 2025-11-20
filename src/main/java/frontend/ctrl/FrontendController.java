@@ -1,5 +1,6 @@
 package frontend.ctrl;
 
+import com.doda.lib_version.VersionUtil;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -55,6 +56,11 @@ public class FrontendController {
     public String index(Model m) {
         m.addAttribute("hostname", modelHost);
         return "sms/index";
+    }
+
+    @GetMapping("/library-version")
+    public String getLibraryVersion() {
+        return VersionUtil.getVersion();
     }
 
     @PostMapping({ "", "/" })
