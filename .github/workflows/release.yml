@@ -13,7 +13,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: doda2025-team22/model-service
+  IMAGE_NAME: doda2025-team22/app
   BUILD_ID: latest
 
 jobs:
