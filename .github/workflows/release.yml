@@ -1,0 +1,64 @@
+name: Release Container Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: "Build identifier (e.g., latest, dev, etc.)"
+        required: true
+        default: "testing"
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: doda2025-team22/app
+  BUILD_ID: latest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: parse version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF:11}
+          MAJOR=$(echo "$VERSION" | cut -d . -f 1)
+          MINOR=$(echo "$VERSION" | cut -d . -f 2)
+          PATCH=$(echo "$VERSION" | cut -d . -f 3)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_MAJOR=$MAJOR" >> $GITHUB_ENV
+          echo "VERSION_MINOR=$MINOR" >> $GITHUB_ENV
+          echo "VERSION_PATCH=$PATCH" >> $GITHUB_ENV
+
+      - name: Log version
+        run: |
+          echo "Building version ${{ env.VERSION }}"
+          echo "Major: ${{ env.VERSION_MAJOR }}, Minor: ${{ env.VERSION_MINOR }}, Patch: ${{ env.VERSION_PATCH }}"
+
+      - name: Log in ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.F8_SECRET }}
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push multi-arch image
+        run: |
+          IMG="ghcr.io/${{ env.IMAGE_NAME }}"
+          IMG=${IMG@L}
+
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag $IMG:${{ env.VERSION }} \
+            --tag $IMG:${{ env.VERSION_MAJOR}}.${{ env.VERSION_MINOR }}.${{env.BUILD_ID}} \
+            --tag $IMG:${{ env.VERSION_MAJOR }}.${{env.BUILD_ID}} \
+            --tag $IMG:${{env.BUILD_ID}} \
+            --push .
