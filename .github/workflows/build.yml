@@ -30,12 +30,12 @@ jobs:
                 cache: "maven"
                 server-id: github # Value of the server id field of the pom.xml
                 server-username: ${{ github.actor }}
-                server-password: ${{ secrets.GH_PACKAGES_TOKEN }}
+                server-password: ${{ secrets.GITHUB_TOKEN }}
                 settings-path: ${{ github.workspace }} # location for the settings.xml file
 
             - name: Set the Maven Version
               run: |
-                  mvn versions:set -DnewVersion=$VERSION #or mvn -Drevision=$VERSION clean package https://maven.apache.org/guides/mini/guide-maven-ci-friendly.html
+                  mvn versions:set -DnewVersion=$VERSION 
                   mvn versions:commit
 
             - name: Build Maven Package
