@@ -14,3 +14,8 @@ The frontend service can be started through running the `Main` class (e.g., in y
 The server runs on port 8080. Once its startup has finished, you can access [localhost:8080/sms](http://localhost:8080/sms) in your browser to interact with the application.
 
 
+# Set version
+For a new release set the version using:
+```bash
+mvn versions:set -DnewVersion=VERSION
+```
