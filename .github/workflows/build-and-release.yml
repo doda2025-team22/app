@@ -1,0 +1,102 @@
+#Workflow that creates a new package on any new release or when manually triggered
+name: Release Frontend Jar
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_package:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup JDK 25 # Java -v >= 25.0.1
+        uses: actions/setup-java@v4 # Creates a settings.xml
+        with:
+          java-version: "25"
+          distribution: "temurin"
+          cache: "maven"
+          server-id: doda-team22_app # Value of the distributionManagement id field of the pom.xml
+          settings-path: ${{ github.workspace }} # location for the settings.xml file
+
+      - uses: s4u/maven-settings-action@v4.0.0
+        with:
+          servers: |
+            [{
+                "id": "com.doda.lib_version",
+                "username": "${{ github.actor }}",
+                "password": "${{ secrets.GITHUB_TOKEN }}"
+            }]
+
+      - name: Build Maven Package
+        run: mvn --batch-mode package --file pom.xml
+
+      - name: publish the package to github packages
+        run: mvn deploy --settings ${{ github.workspace }}/settings.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build_container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Parse version from tag
+        id: version
+        run: |
+          VERSION_SUFFIX=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(echo "$VERSION_SUFFIX" | sed 's/-.*//')
+          MAJOR=$(echo "$VERSION" | cut -d . -f 1)
+          MINOR=$(echo "$VERSION" | cut -d . -f 2)
+          PATCH=$(echo "$VERSION" | cut -d . -f 3)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_MAJOR=$MAJOR" >> $GITHUB_ENV
+          echo "VERSION_MINOR=$MINOR" >> $GITHUB_ENV
+          echo "VERSION_PATCH=$PATCH" >> $GITHUB_ENV
+
+      - name: Log version
+        run: |
+          echo "Building version ${{ env.VERSION }}"
+          echo "Major: ${{ env.VERSION_MAJOR }}, Minor: ${{ env.VERSION_MINOR }}, Patch: ${{ env.VERSION_PATCH }}"
+
+      - name: Log in ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push multi-arch image image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            FRONTEND_PORT=8081
+            MODEL_HOST=http://127.0.0.1:8081
+            VERSION=${{ env.VERSION }}
+            GH_ACTOR=${{ github.actor }}
+            GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION_MAJOR }}.${{ env.VERSION_MINOR }}.${{env.BUILD_ID}}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION_MAJOR }}.${{env.BUILD_ID}}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{env.BUILD_ID}}
