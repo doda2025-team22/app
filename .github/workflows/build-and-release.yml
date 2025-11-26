@@ -1,5 +1,5 @@
 #Workflow that creates a new package on any new release or when manually triggered
-name: Release Frontend Jar
+name: Release Frontend Jar and Build Docker Image
 
 on:
   push:
@@ -13,12 +13,14 @@ permissions:
   contents: read
   packages: write
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: doda2025-team22/app
+  BUILD_ID: latest
+
 jobs:
   build_package:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -28,21 +30,15 @@ jobs:
         with:
           java-version: "25"
           distribution: "temurin"
+          server-id: "github" # must match <id> in distributionManagement
+          server-username: MAVEN_USERNAME # env var names, not values
+          server-password: MAVEN_PASSWORD
 
-      - uses: s4u/maven-settings-action@v4.0.0
-        with:
-          servers: |
-            [{
-                "id": "com.doda.lib_version",
-                "username": "${{ github.actor }}",
-                "password": "${{ secrets.GITHUB_TOKEN }}"
-            }]
-
-      - name: Build Maven Package
-        run: mvn --batch-mode package --file pom.xml
-
-      - name: publish the package to github packages
-        run: mvn deploy
+      - name: Build & deploy
+        run: mvn -B deploy
+        env:
+          MAVEN_USERNAME: ${{ github.actor }}
+          MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
   build_container:
     runs-on: ubuntu-latest
@@ -50,6 +46,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Setup JDK 25 # Java -v >= 25.0.1
+        uses: actions/setup-java@v4 # Creates a settings.xml
+        with:
+          java-version: "25"
+          distribution: "temurin"
+          server-id: "github" # must match <id> in distributionManagement
+          server-username: MAVEN_USERNAME # env var names, not values
+          server-password: MAVEN_PASSWORD
 
       - name: Parse version from tag
         id: version
@@ -63,6 +68,9 @@ jobs:
           echo "VERSION_MAJOR=$MAJOR" >> $GITHUB_ENV
           echo "VERSION_MINOR=$MINOR" >> $GITHUB_ENV
           echo "VERSION_PATCH=$PATCH" >> $GITHUB_ENV
+        env:
+          MAVEN_USERNAME: ${{ github.actor }}
+          MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log version
         run: |
