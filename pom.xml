@@ -47,6 +47,15 @@
 		</repository>
 	</repositories>
 
+    <distributionManagement>
+        <!-- To publish the app -->
+        <repository>
+            <id>github-app</id>
+            <name>App Maven Packages</name>
+            <url>https://maven.pkg.github.com/YOUR-ORG/YOUR-APP-REPO</url>
+        </repository>
+    </distributionManagement>
+
 	<build>
 		<plugins>
 			<plugin>

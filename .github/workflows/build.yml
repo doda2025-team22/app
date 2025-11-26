@@ -30,7 +30,7 @@ jobs:
                 cache: "maven"
                 server-id: github # Value of the server id field of the pom.xml
                 server-username: ${{ github.actor }}
-                server-password: ${{ secrets.GH_PACKAGES_TOKEN }}
+                server-password: ${{ secrets.GH_PACKAGES_TOKEN_TEST }}
                 settings-path: ${{ github.workspace }} # location for the settings.xml file
 
             - name: Set the Maven Version
