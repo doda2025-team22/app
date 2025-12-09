@@ -9,5 +9,8 @@
 <body>
     <span>Version is:</span>
     <span id="version" th:text="${version}"></span>
+    <form th:action="@{/sms/library-version}" method="post">
+        <button>Click on me!</button>
+    </form>
 </body>
 </html>

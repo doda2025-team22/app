@@ -1,9 +1,14 @@
 package frontend.ctrl;
 
 import com.doda.lib_version.VersionUtil;
+import frontend.data.metrics.Counter;
+import frontend.data.metrics.Gauge;
+import frontend.data.metrics.Histogram;
+import frontend.data.metrics.MetricsRegistry;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import java.util.Objects;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Controller;
@@ -25,9 +30,36 @@ public class FrontendController {
 
     private RestTemplateBuilder rest;
 
-    public FrontendController(RestTemplateBuilder rest, Environment env) {
+    // -- metrics fields --
+
+    private final MetricsRegistry registry;
+
+    private final Counter buttonCounter;
+
+    private final Gauge spamGruessPercentage;
+
+    private final Histogram textLengthHistogram;
+
+    private int spamGuessCount;
+
+    private int hamGuessCount;
+
+    public FrontendController(RestTemplateBuilder rest, Environment env, MetricsRegistry registry) {
         this.rest = rest;
         this.modelHost = env.getProperty("MODEL_HOST");
+        this.registry = registry;
+        this.buttonCounter = registry.createCounter(
+            "button_presses_counter",
+            "Total numbers of button presses");
+        this.spamGruessPercentage = registry.createGauge(
+            "spam_guess_gauge",
+            "The current percentage of spam guess of the users compared to all predictions");
+        this.textLengthHistogram = registry.createHistogram(
+            "length_of_text",
+            "The distribution of the number of characters of the sms tested by the user",
+            new double[]{10,20,30,40,50,60,70,80,90});
+        this.spamGuessCount = 0;
+        this.hamGuessCount = 0;
         assertModelHost();
     }
 
@@ -64,12 +96,35 @@ public class FrontendController {
         m.addAttribute("version",VersionUtil.getVersion());
         return "sms/library-version";
     }
+    @PostMapping("/library-version")
+    public String postLibraryVersionButton(Model m) {
+        // -- metrics start --
+        System.out.println("Clicked the button in version!");
+        buttonCounter.inc("library_version_button");
+        // -- metrics end --
+
+        m.addAttribute("version",VersionUtil.getVersion());
+        return "sms/library-version";
+    }
 
     @PostMapping({ "", "/" })
     @ResponseBody
     public Sms predict(@RequestBody Sms sms) {
-        System.out.printf("Requesting prediction for \"%s\" ...\n", sms.sms);
+        // -- metrics start --
+        System.out.println("Clicked the button for prediction!");
+        buttonCounter.inc("prediction_button");
+
+        if (Objects.equals(sms.guess, "ham")) {
+            hamGuessCount++;
+        } else {
+            spamGuessCount++;
+        }
+        spamGruessPercentage.set("prediction", (double) spamGuessCount * 100 / (hamGuessCount + spamGuessCount));
+        textLengthHistogram.observe(sms.sms.length());
+        // -- metrics end --
+
         sms.result = getPrediction(sms);
+
         System.out.printf("Prediction: %s\n", sms.result);
         return sms;
     }
@@ -82,5 +137,16 @@ public class FrontendController {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // --- Exposing metrics ---
+    // Gauge -> num of active sessions
+    // Counter -> number of predictions gotten
+    // Histogram -> duration for how long it takes to make a prediction, distribution of that
+
+    @GetMapping(value = "/metrics", produces = "text/plain; version=0.0.4")
+    @ResponseBody
+    public String exposeMetrics() {
+        return registry.expose();
     }
 }
