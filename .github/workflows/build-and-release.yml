@@ -3,10 +3,8 @@ name: Release Frontend Jar and Build Docker Image
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "pom.xml"
+   tags:
+     - release # push a tag called release to release a workflow, single-source-of truth of version is in pom
   workflow_dispatch:
 
 permissions:
