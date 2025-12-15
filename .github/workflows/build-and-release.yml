@@ -32,6 +32,9 @@ jobs:
           server-username: MAVEN_USERNAME # env var names, not values
           server-password: MAVEN_PASSWORD
 
+      - name: Delete original Tag
+        run: git push --delete origin ${GITHUB_REF#refs/tags/} #since the worklow only triggers with a tag, this should, in theory, not break
+
       - name: Build & deploy
         run: mvn -B deploy
         env:
