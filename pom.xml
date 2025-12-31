@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.doda.app</groupId>
 	<artifactId>app</artifactId>
-	<version>1.2.8</version>
+	<version>1.2.9-SNAPSHOT</version>
 
 	<properties>
 		<java.version>25</java.version>
@@ -27,7 +27,7 @@
 		<dependency>
 			<groupId>com.doda.lib_version</groupId>
 			<artifactId>lib-version</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.5</version>
 		</dependency> 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
