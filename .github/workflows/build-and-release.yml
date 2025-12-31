@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 env:
@@ -34,43 +34,27 @@ jobs:
           server-username: MAVEN_USERNAME # env var names, not values
           server-password: MAVEN_PASSWORD
 
+      - name: Remove snapshot
+        run: |
+          mvn versions:set versions:commit -DremoveSnapshot -q
+          RELEASE_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=${RELEASE_VERSION}" >> $GITHUB_ENV
+
       - name: Build & deploy
         run: mvn -B deploy
         env:
           MAVEN_USERNAME: ${{ github.actor }}
           MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-  build_container:
-    runs-on: ubuntu-latest
-    needs: build_package
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup JDK 25 # Java -v >= 25.0.1
-        uses: actions/setup-java@v4 # Creates a settings.xml
-        with:
-          java-version: "25"
-          distribution: "temurin"
-          server-id: "github" # must match <id> in distributionManagement
-          server-username: MAVEN_USERNAME # env var names, not values
-          server-password: MAVEN_PASSWORD
-
       - name: Parse version from tag
         id: version
         run: |
-          VERSION_SUFFIX=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          VERSION=$(echo "$VERSION_SUFFIX" | sed 's/-.*//')
-          MAJOR=$(echo "$VERSION" | cut -d . -f 1)
-          MINOR=$(echo "$VERSION" | cut -d . -f 2)
-          PATCH=$(echo "$VERSION" | cut -d . -f 3)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          MAJOR=$(echo "$RELEASE_VERSION" | cut -d . -f 1)
+          MINOR=$(echo "$RELEASE_VERSION" | cut -d . -f 2)
+          PATCH=$(echo "$RELEASE_VERSION" | cut -d . -f 3)
           echo "VERSION_MAJOR=$MAJOR" >> $GITHUB_ENV
           echo "VERSION_MINOR=$MINOR" >> $GITHUB_ENV
           echo "VERSION_PATCH=$PATCH" >> $GITHUB_ENV
-        env:
-          MAVEN_USERNAME: ${{ github.actor }}
-          MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log version
         run: |
@@ -105,3 +89,17 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION_MAJOR }}.${{ env.VERSION_MINOR }}.${{env.BUILD_ID}}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION_MAJOR }}.${{env.BUILD_ID}}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{env.BUILD_ID}}
+
+      - name: Bump version
+        run: |
+          mvn release:update-versions --batch-mode
+          PRERELEASE_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+
+      - name: Create commit
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+          git add pom.xml
+          git commit -m "Bump version to ${PRERELEASE_VERSION} [skip ci]"
+          git push
