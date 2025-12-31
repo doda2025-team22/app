@@ -2,11 +2,6 @@
 name: Release Frontend Jar and Build Docker Image
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "pom.xml"
   workflow_dispatch:
 
 permissions:
@@ -49,9 +44,9 @@ jobs:
       - name: Parse version from tag
         id: version
         run: |
-          MAJOR=$(echo "$RELEASE_VERSION" | cut -d . -f 1)
-          MINOR=$(echo "$RELEASE_VERSION" | cut -d . -f 2)
-          PATCH=$(echo "$RELEASE_VERSION" | cut -d . -f 3)
+          MAJOR=$(echo "$VERSION" | cut -d . -f 1)
+          MINOR=$(echo "$VERSION" | cut -d . -f 2)
+          PATCH=$(echo "$VERSION" | cut -d . -f 3)
           echo "VERSION_MAJOR=$MAJOR" >> $GITHUB_ENV
           echo "VERSION_MINOR=$MINOR" >> $GITHUB_ENV
           echo "VERSION_PATCH=$PATCH" >> $GITHUB_ENV
