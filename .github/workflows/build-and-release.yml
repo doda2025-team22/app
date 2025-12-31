@@ -2,6 +2,11 @@
 name: Release Frontend Jar and Build Docker Image
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
   workflow_dispatch:
 
 permissions:
@@ -14,8 +19,54 @@ env:
   BUILD_ID: latest
 
 jobs:
+  version-only:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2 # so we can diff against previous commit
+
+      - name: Ensure only version changed in pom.xml
+        id: check_pom
+        run: |
+          # show diff for debugging
+          git diff HEAD^ HEAD -- pom.xml || true
+
+          # Extract previous and current versions (very simple XML grep;
+          # adapt if your pom is more complex)
+          PREV_VERSION=$(git show HEAD^:pom.xml | sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' | head -n1)
+          CURR_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' pom.xml | head -n1)
+
+          echo "Prev version: $PREV_VERSION"
+          echo "Curr version: $CURR_VERSION"
+
+          if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
+            echo "Version did not change – failing (no reason to run)."
+            exit 1
+          fi
+
+          # Temporarily revert pom.xml to previous version file for structural diff
+          git show HEAD^:pom.xml > pom_prev.xml
+          cp pom.xml pom_curr.xml
+
+          # Replace version in both files with a placeholder so we can ignore it
+          sed -i 's/<version>.*<\/version>/<version>IGNORED<\/version>/g' pom_prev.xml
+          sed -i 's/<version>.*<\/version>/<version>IGNORED<\/version>/g' pom_curr.xml
+
+          # Now compare the normalized files
+          if ! diff -u pom_prev.xml pom_curr.xml > /dev/null; then
+            echo "pom.xml changed in places other than <version>; failing."
+            diff -u pom_prev.xml pom_curr.xml || true
+            exit 1
+          fi
+
+          echo "Only <version> changed in pom.xml"
+
   build_package:
     runs-on: ubuntu-latest
+    needs: version-only
     steps:
       - name: Checkout
         uses: actions/checkout@v5
