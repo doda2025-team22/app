@@ -40,6 +40,15 @@ public class FrontendController {
 
     private final Histogram textLengthHistogram;
 
+    // Request latency histograms (seconds)
+    private final Histogram httpRequestDurationSeconds;
+
+    private final Histogram modelCallDurationSeconds;
+
+    private final Counter totalGuessCounter;
+
+    private final Counter cachedGuessCounter;
+
     private int spamGuessCount;
 
     private int hamGuessCount;
@@ -58,8 +67,23 @@ public class FrontendController {
             "length_of_text",
             "The distribution of the number of characters of the sms tested by the user",
             new double[]{10,20,30,40,50,60,70,80,90});
+        this.httpRequestDurationSeconds = registry.createHistogram(
+            "http_request_duration_seconds",
+            "Distribution of total /sms prediction request handling time in seconds",
+            new double[]{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5});
+
+        this.modelCallDurationSeconds = registry.createHistogram(
+            "model_call_duration_seconds",
+            "Distribution of model backend call duration in seconds",
+            new double[]{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5});
         this.spamGuessCount = 0;
         this.hamGuessCount = 0;
+        this.totalGuessCounter = registry.createCounter(
+            "total_guess_counter",
+            "Total number of guesses made by the API");
+        this.cachedGuessCounter = registry.createCounter(
+            "cached_guess_counter",
+            "Total number of cached guesses served");
         assertModelHost();
     }
 
@@ -110,30 +134,53 @@ public class FrontendController {
     @PostMapping({ "", "/" })
     @ResponseBody
     public Sms predict(@RequestBody Sms sms) {
-        // -- metrics start --
-        System.out.println("Clicked the button for prediction!");
-        buttonCounter.inc("prediction_button");
+        final long requestStartNs = System.nanoTime();
+        try {
+            // -- metrics start --
+            System.out.println("Clicked the button for prediction!");
+            buttonCounter.inc("prediction_button");
 
-        if (Objects.equals(sms.guess, "ham")) {
-            hamGuessCount++;
-        } else {
-            spamGuessCount++;
+            if (Objects.equals(sms.guess, "ham")) {
+                hamGuessCount++;
+            } else {
+                spamGuessCount++;
+            }
+            spamGruessPercentage.set("prediction", (double) spamGuessCount * 100 / (hamGuessCount + spamGuessCount));
+            textLengthHistogram.observe(sms.sms.length());
+            // -- metrics end --
+            
+            String[] predictions = getPrediction(sms);
+            sms.result = predictions[0];
+            sms.cached = predictions[1];
+            if (Objects.equals(sms.cached, "true")) {
+                cachedGuessCounter.inc("cached_guess");
+            }
+
+            System.out.printf("Prediction: %s\n", sms.result);
+            System.out.printf("Cached: %s\n", sms.cached);
+            return sms;
         }
-        spamGruessPercentage.set("prediction", (double) spamGuessCount * 100 / (hamGuessCount + spamGuessCount));
-        textLengthHistogram.observe(sms.sms.length());
-        // -- metrics end --
-
-        sms.result = getPrediction(sms);
-
-        System.out.printf("Prediction: %s\n", sms.result);
-        return sms;
+        finally {
+            double seconds = (System.nanoTime() - requestStartNs) / 1_000_000_000.0;
+            httpRequestDurationSeconds.observe(seconds);
+        }
     }
 
-    private String getPrediction(Sms sms) {
+    private String[] getPrediction(Sms sms) {
         try {
+            String[] predictions = new String[2];
+            final long modelStartNs = System.nanoTime();
+
+            totalGuessCounter.inc("total_guesses");
+
             var url = new URI(modelHost + "/predict");
             var c = rest.build().postForEntity(url, sms, Sms.class);
-            return c.getBody().result.trim();
+            double modelSeconds = (System.nanoTime() - modelStartNs) / 1_000_000_000.0;
+            modelCallDurationSeconds.observe(modelSeconds);
+
+            predictions[0] = c.getBody().result.trim();
+            predictions[1] = c.getBody().cached.trim();
+            return predictions;
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

@@ -38,7 +38,7 @@ $(document).ready(function() {
 
 		cleanResult()		
 		$("#result").addClass(wasRight ? "correct" : "incorrect")
-		$("#result").html("The classifier " + (wasRight ? "agrees" : "disagrees"))		
+		$("#result").html("The classifier " + (wasRight ? "agrees" : "disagrees") + ". (Cached: " + res.cached + ")")
 		$("#result").show()
 	}
 	
