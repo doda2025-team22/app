@@ -1,5 +1,5 @@
 #Workflow that creates a new package on any new release or when manually triggered
-name: Release Frontend Jar and Build Docker Image
+name: Release Frontend Jar and Build Docker Image Canary
 
 on:
   push:
@@ -79,7 +79,8 @@ jobs:
       - name: Parse version from tag
         id: version
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION_SUFFIX=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(echo "$VERSION_SUFFIX" | sed 's/-.*//')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           MAJOR=$(echo "$VERSION" | cut -d . -f 1)
           MINOR=$(echo "$VERSION" | cut -d . -f 2)
@@ -116,7 +117,7 @@ jobs:
           build-args: |
             FRONTEND_PORT=8081
             MODEL_HOST=http://127.0.0.1:8081
-            VERSION=${{ env.VERSION }}
+            VERSION=${{ env.VERSION }}-CANARY
             GH_ACTOR=${{ github.actor }}
             GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
           tags: |

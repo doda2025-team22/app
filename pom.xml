@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.doda.app</groupId>
 	<artifactId>app</artifactId>
-	<version>1.2.12-CANARY</version>
+	<version>1.2.14-CANARY</version>
 
 	<properties>
 		<java.version>25</java.version>
@@ -34,21 +34,6 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-		<groupId>io.prometheus</groupId>
-		<artifactId>prometheus-metrics-core</artifactId>
-		<version>1.3.1</version>
-	</dependency>
-	<dependency>
-		<groupId>io.prometheus</groupId>
-		<artifactId>prometheus-metrics-instrumentation-jvm</artifactId>
-		<version>1.3.1</version>
-	</dependency>
-	<dependency>
-		<groupId>io.prometheus</groupId>
-		<artifactId>prometheus-metrics-exporter-httpserver</artifactId>
-		<version>1.3.1</version>
-	</dependency>
 	</dependencies>
 
 	<!-- we add definition of the package registry for the library dependency -->
