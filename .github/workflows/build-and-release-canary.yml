@@ -4,7 +4,7 @@ name: Release Frontend Jar and Build Docker Image Canary
 on:
   push:
     branches:
-      - canary
+      - canary-release
     paths:
       - "pom.xml"
   workflow_dispatch:
