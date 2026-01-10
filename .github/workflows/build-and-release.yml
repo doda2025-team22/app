@@ -33,6 +33,7 @@ jobs:
 
       - name: Ensure only project <version> changed
         id: check_pom
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           # 1) Extract previous project version (from HEAD^)
           PREV_VERSION=$(
@@ -79,6 +80,8 @@ jobs:
       - name: Parse version from tag
         id: version
         run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           MAJOR=$(echo "$VERSION" | cut -d . -f 1)
           MINOR=$(echo "$VERSION" | cut -d . -f 2)
           PATCH=$(echo "$VERSION" | cut -d . -f 3)
