@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.doda.app</groupId>
 	<artifactId>app</artifactId>
-	<version>1.2.12-SNAPSHOT</version>
+	<version>1.2.12</version>
 
 	<properties>
 		<java.version>25</java.version>
