@@ -22,4 +22,4 @@ ENV MODEL_HOST="http://127.0.0.1:8081"
 ENV FRONTEND_PORT=8080
 EXPOSE ${FRONTEND_PORT}
 
-CMD ["java", "-jar", "/app/app.jar", "--server.port=${FRONTEND_PORT}"]
+CMD java -jar /app/app.jar --server.port=${FRONTEND_PORT}
